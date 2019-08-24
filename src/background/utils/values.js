@@ -71,12 +71,12 @@ function doUpdate() {
   cache = null;
   const ids = Object.keys(currentCache);
   getValueStoresByIds(ids)
-  .then(valueStores => {
-    ids.forEach(id => {
+  .then((valueStores) => {
+    ids.forEach((id) => {
       const valueStore = valueStores[id] || {};
       valueStores[id] = valueStore;
       const updates = currentCache[id] || {};
-      Object.keys(updates).forEach(key => {
+      Object.keys(updates).forEach((key) => {
         const value = updates[key];
         if (!value) delete valueStore[key];
         else valueStore[key] = value;
@@ -85,6 +85,9 @@ function doUpdate() {
     return dumpValueStores(valueStores);
   })
   .then(broadcastUpdates)
+  .catch((err) => {
+    console.error('Values error:', err);
+  })
   .then(() => {
     timer = null;
     if (cache) updateLater();

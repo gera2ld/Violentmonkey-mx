@@ -1,12 +1,26 @@
 <template>
   <div class="page-options flex h-100">
     <aside>
-      <img src="/icons/icon_64.png">
-      <h1 v-text="i18n('extName')"></h1>
-      <div class="sidemenu">
-        <a href="#scripts" :class="{active: tab === 'scripts'}" v-text="i18n('sideMenuInstalled')"></a>
-        <a href="#settings" :class="{active: tab === 'settings'}" v-text="i18n('sideMenuSettings')"></a>
-        <a href="#about" :class="{active: tab === 'about'}" v-text="i18n('sideMenuAbout')"></a>
+      <div class="aside-content">
+        <img src="/icons/icon_64.png">
+        <h1 v-text="i18n('extName')"></h1>
+        <div class="aside-menu">
+          <a
+            href="#scripts"
+            :class="{active: tab === 'scripts'}"
+            v-text="i18n('sideMenuInstalled')"
+          />
+          <a
+            href="#settings"
+            :class="{active: tab === 'settings'}"
+            v-text="i18n('sideMenuSettings')"
+          />
+          <a
+            href="#about"
+            :class="{active: tab === 'about'}"
+            v-text="i18n('sideMenuAbout')"
+          />
+        </div>
       </div>
     </aside>
     <component :is="tabComponent" class="tab flex-auto"></component>
@@ -14,6 +28,7 @@
 </template>
 
 <script>
+import { i18n } from '#/common';
 import { store } from '../utils';
 import Installed from './tab-installed';
 import Settings from './tab-settings';
@@ -24,19 +39,28 @@ const tabs = {
   settings: Settings,
   about: About,
 };
+const extName = i18n('extName');
 
 export default {
   data() {
-    return store;
+    return {
+      aside: false,
+      store,
+    };
   },
   computed: {
     tab() {
-      let tab = this.route.paths[0];
+      let tab = this.store.route.paths[0];
       if (!tabs[tab]) tab = 'scripts';
       return tab;
     },
     tabComponent() {
       return tabs[this.tab];
+    },
+  },
+  watch: {
+    'store.title'(title) {
+      document.title = title ? `${title} - ${extName}` : extName;
     },
   },
 };

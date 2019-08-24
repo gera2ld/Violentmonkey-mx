@@ -3,16 +3,20 @@
     <div class="mb-1">
       <button @click="onNew">+</button>
       <div class="inline-block ml-2" v-if="totalPages > 1">
-        <button :disabled="!hasPrevious" @click="page -= 1">&larr;</button>
+        <button :disabled="!hasPrevious" @click="page = currentPage.page - 1">&larr;</button>
         <span class="mx-1" v-text="page"></span>
-        <button :disabled="!hasNext" @click="page += 1">&rarr;</button>
+        <button :disabled="!hasNext" @click="page = currentPage.page + 1">&rarr;</button>
       </div>
     </div>
     <div class="edit-values-table" v-if="keys">
       <div class="edit-values-empty" v-if="!keys.length">
         <div v-text="i18n('noValues')"></div>
       </div>
-      <div class="edit-values-row flex" v-for="key in currentPage" @click="onEdit(key)">
+      <div
+        v-for="key in currentPage.data"
+        :key="key"
+        class="edit-values-row flex"
+        @click="onEdit(key)">
         <div class="ellipsis">
           <span v-text="key"></span>
           <div class="edit-values-btn">
@@ -33,7 +37,7 @@
         </div>
       </div>
       <label class="mb-1" v-text="i18n('valueLabelKey')"></label>
-      <input v-model="current.key" :readOnly="!current.isNew">
+      <input type="text" v-model="current.key" :readOnly="!current.isNew">
       <label class="mt-1 mb-1" v-text="i18n('valueLabelValue')"></label>
       <textarea class="flex-auto" v-model="current.value"></textarea>
     </div>
@@ -41,8 +45,8 @@
 </template>
 
 <script>
-import { sendMessage } from 'src/common';
-import Icon from 'src/common/ui/icon';
+import { sendMessage } from '#/common';
+import Icon from '#/common/ui/icon';
 
 const PAGE_SIZE = 25;
 const MAX_LENGTH = 1024;
@@ -54,7 +58,6 @@ export default {
   },
   data() {
     return {
-      page: 1,
       current: null,
       keys: null,
       values: null,
@@ -66,16 +69,18 @@ export default {
       return Math.floor(this.keys.length / PAGE_SIZE) + 1;
     },
     currentPage() {
-      if (!this.keys) return null;
-      this.page = Math.max(1, Math.min(this.page, this.totalPages));
-      const offset = PAGE_SIZE * (this.page - 1);
-      return this.keys.slice(offset, offset + PAGE_SIZE);
+      const page = Math.max(1, Math.min(this.page, this.totalPages));
+      const offset = PAGE_SIZE * (page - 1);
+      return {
+        page,
+        data: this.keys ? this.keys.slice(offset, offset + PAGE_SIZE) : null,
+      };
     },
     hasPrevious() {
-      return this.page > 1;
+      return this.currentPage.page > 1;
     },
     hasNext() {
-      return this.page < this.totalPages;
+      return this.currentPage.page < this.totalPages;
     },
   },
   watch: {
@@ -96,9 +101,10 @@ export default {
     },
     refresh() {
       sendMessage({ cmd: 'GetValueStore', data: this.script.props.id })
-      .then(values => {
+      .then((values) => {
         this.values = values;
         this.keys = Object.keys(values).sort();
+        this.page = 1;
       });
     },
     updateValue({ key, value, isNew }) {
@@ -115,12 +121,12 @@ export default {
       })
       .then(() => {
         if (value) {
-          this.values[key] = rawValue;
+          this.$set(this.values, key, rawValue);
           if (isNew) this.keys.push(key);
         } else {
           const i = this.keys.indexOf(key);
           if (i >= 0) this.keys.splice(i, 1);
-          delete this.values[key];
+          this.$delete(this.values, key);
         }
       });
     },
@@ -206,6 +212,9 @@ export default {
     box-shadow: -5px 0 5px #ddd;
     background: white;
     z-index: 10;
+    @media (max-width: 767px) {
+      width: 100%;
+    }
     input {
       width: 100%;
     }

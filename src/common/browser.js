@@ -1,5 +1,5 @@
-import 'src/common/polyfills';
-import { injectContent } from 'src/common';
+import '#/common/polyfills';
+import { injectContent } from '#/common';
 
 if (typeof browser === 'undefined') {
   const EXTENSION = 'EXTENSION';
@@ -10,7 +10,7 @@ if (typeof browser === 'undefined') {
   const sourceId = `RUNTIME_${getUniqId()}`;
   const onNotificationClickListeners = [];
   const onNotificationCloseListeners = [];
-  const manifest = process.env.manifest;
+  const manifest = process.env.MANIFEST;
 
   // Maxthon sucks
   // Bug: tab.id is a number, but getTabById requires a string
@@ -33,7 +33,7 @@ if (typeof browser === 'undefined') {
         currentTabId = tabId;
         update();
       });
-      global.browser.tabs.onRemoved.addListener(tabId => {
+      global.browser.tabs.onRemoved.addListener((tabId) => {
         delete data[tabId];
       });
     },
@@ -47,28 +47,28 @@ if (typeof browser === 'undefined') {
   const updatedListeners = [];
   const activatedListeners = [];
   const removedListeners = [];
-  tabEvents.update = listener => { updatedListeners.push(listener); };
-  tabEvents.activate = listener => { activatedListeners.push(listener); };
-  tabEvents.remove = listener => { removedListeners.push(listener); };
-  br.onBrowserEvent = data => {
+  tabEvents.update = (listener) => { updatedListeners.push(listener); };
+  tabEvents.activate = (listener) => { activatedListeners.push(listener); };
+  tabEvents.remove = (listener) => { removedListeners.push(listener); };
+  br.onBrowserEvent = (data) => {
     const { type } = data;
     if (type === 'ON_NAVIGATE') {
       // ON_NAVIGATE is not triggered for 302
-      updatedListeners.forEach(listener => {
+      updatedListeners.forEach((listener) => {
         listener(data.id, data);
       });
     } else if (type === 'PAGE_LOADED') {
       // PAGE_LOADED is triggered after URL redirected
       const tab = getTabById(data.id);
-      updatedListeners.forEach(listener => {
+      updatedListeners.forEach((listener) => {
         listener(data.id, tab);
       });
     } else if (type === 'TAB_SWITCH') {
-      activatedListeners.forEach(listener => {
+      activatedListeners.forEach((listener) => {
         listener({ tabId: data.to });
       });
     } else if (type === 'PAGE_CLOSED') {
-      removedListeners.forEach(listener => {
+      removedListeners.forEach((listener) => {
         listener(data.id);
       });
     }
@@ -77,8 +77,8 @@ if (typeof browser === 'undefined') {
   const messenger = {
     data: {},
     initTabId() {
-      messenger.tabIdPromise = new Promise(resolve => {
-        window.setTabId = tabId => {
+      messenger.tabIdPromise = new Promise((resolve) => {
+        window.setTabId = (tabId) => {
           messenger.data.tabId = tabId;
           resolve();
         };
@@ -92,7 +92,7 @@ if (typeof browser === 'undefined') {
     init() {
       const onMessageListeners = [];
       const promises = {};
-      messenger.listen = listener => { onMessageListeners.push(listener); };
+      messenger.listen = (listener) => { onMessageListeners.push(listener); };
       messenger.send = (target, data, isTab) => {
         const promise = new Promise((resolve, reject) => {
           const callback = `CALLBACK_${getUniqId()}`;
@@ -115,23 +115,23 @@ if (typeof browser === 'undefined') {
             rt.post(target, payload);
           }
         })
-        .then(res => {
+        .then((res) => {
           if (res && res.error) throw res.error;
           return res && res.data;
         });
-        promise.catch(err => {
+        promise.catch((err) => {
           if (process.env.DEBUG) console.warn(err);
         });
         return promise;
       };
-      const onMessage = res => {
+      const onMessage = (res) => {
         if (process.env.DEBUG) {
           console.info('receive', res);
         }
         const { source } = res;
         if (source.id === sourceId) return; // ignore message from self
         let { callback } = source;
-        const sendResponse = data => {
+        const sendResponse = (data) => {
           if (!callback) throw new Error('Already called!');
           if (process.env.DEBUG) {
             console.info('send', data);
@@ -139,12 +139,12 @@ if (typeof browser === 'undefined') {
           rt.post(source.id, { callback, data });
           callback = null;
         };
-        onMessageListeners.forEach(listener => {
+        onMessageListeners.forEach((listener) => {
           const result = listener(res.data, source);
           if (result && typeof result.then === 'function') {
-            result.then(data => {
+            result.then((data) => {
               sendResponse({ data });
-            }, error => {
+            }, (error) => {
               console.error(error);
               sendResponse({ error });
             });
@@ -154,7 +154,7 @@ if (typeof browser === 'undefined') {
         });
       };
       rt.listen(global.browser.__isContent ? CONTENT : EXTENSION, onMessage);
-      rt.listen(sourceId, res => {
+      rt.listen(sourceId, (res) => {
         if (res && res.callback) {
           const promise = promises[res.callback];
           delete promises[res.callback];
@@ -182,11 +182,11 @@ if (typeof browser === 'undefined') {
     const getErrorHandler = reject => e => reject(e.target.error.message);
     const ready = new Promise((resolve, reject) => {
       const req = indexedDB.open('Violentmonkey', 1);
-      req.onsuccess = e => {
+      req.onsuccess = (e) => {
         resolve(e.target.result);
       };
       req.onerror = getErrorHandler(reject);
-      req.onupgradeneeded = e => {
+      req.onupgradeneeded = (e) => {
         const db = e.target.result;
         db.createObjectStore(STORE_NAME, { keyPath: 'key' });
       };
@@ -197,7 +197,7 @@ if (typeof browser === 'undefined') {
       if (!arg) {
         // get all values
         const req = objectStore.openCursor();
-        req.onsuccess = e => {
+        req.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) {
             const { key, value } = cursor.value;
@@ -219,7 +219,7 @@ if (typeof browser === 'undefined') {
         }
         let progress = 0;
         let onReject = getErrorHandler(reject);
-        const onError = e => {
+        const onError = (e) => {
           if (onReject) {
             onReject(e);
             onReject = null;
@@ -228,10 +228,10 @@ if (typeof browser === 'undefined') {
         const checkResolve = () => {
           if (!progress) resolve(results);
         };
-        keys.forEach(key => {
+        keys.forEach((key) => {
           progress += 1;
           const req = objectStore.get(key);
-          req.onsuccess = e => {
+          req.onsuccess = (e) => {
             const { result } = e.target;
             results[key] = result ? result.value : defaults[key];
             progress -= 1;
@@ -324,7 +324,7 @@ if (typeof browser === 'undefined') {
             show();
             resolve(id);
           } else {
-            Notification.requestPermission(e => {
+            Notification.requestPermission((e) => {
               if (e === 'granted') {
                 show();
                 resolve(id);
@@ -346,12 +346,12 @@ if (typeof browser === 'undefined') {
             notice.close();
           }, 10000);
           notice.onclick = () => {
-            onNotificationClickListeners.forEach(listener => { listener(id); });
+            onNotificationClickListeners.forEach((listener) => { listener(id); });
             setTimeout(() => { notice.close(); });
           };
           notice.onclose = () => {
             clearTimeout(revoker);
-            onNotificationCloseListeners.forEach(listener => { listener(id); });
+            onNotificationCloseListeners.forEach((listener) => { listener(id); });
           };
         }
       },
@@ -401,7 +401,7 @@ if (typeof browser === 'undefined') {
           br.tabs.newTab({
             url: data.url,
             activate: data.active == null ? true : data.active,
-          }, tab => {
+          }, (tab) => {
             if (tab) resolve(tab);
             else reject();
           });

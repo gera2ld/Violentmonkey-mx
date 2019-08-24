@@ -1,6 +1,6 @@
 const openers = {};
 
-browser.tabs.onRemoved.addListener(id => {
+browser.tabs.onRemoved.addListener((id) => {
   const openerSrcId = openers[id];
   if (openerSrcId) {
     browser.__send(openerSrcId, {
@@ -17,7 +17,7 @@ export function tabOpen(data, src) {
     url,
     active,
   })
-  .then(tab => {
+  .then((tab) => {
     const { id } = tab;
     openers[id] = src.id;
     return { id };

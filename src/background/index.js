@@ -1,33 +1,38 @@
-import 'src/common/browser';
-import { injectContent } from 'src/common';
-import { objectGet } from 'src/common/object';
+import { injectContent, getUniqId, noop } from '#/common';
+import { objectGet } from '#/common/object';
 import * as sync from './sync';
 import {
   cache,
   getRequestId, httpRequest, abortRequest, confirmInstall,
   newScript, parseMeta,
   setClipboard, checkUpdate,
-  getOption, setOption, hookOptions, getAllOptions,
-  initialize,
+  getOption, getDefaultOption, setOption, hookOptions, getAllOptions,
+  initialize, sendMessageOrIgnore,
 } from './utils';
 import { tabOpen, tabClose } from './utils/tabs';
 import createNotification from './utils/notifications';
 import {
-  getScripts, removeScript, getData, checkRemove, getScriptsByURL,
+  getScripts, markRemoved, removeScript, getData, checkRemove, getScriptsByURL,
   updateScriptInfo, getExportData, getScriptCode,
   getScriptByIds, moveScript, vacuum, parseScript, getScript,
   sortScripts, getValueStoresByIds,
 } from './utils/db';
 import { resetBlacklist } from './utils/tester';
-import { setValueStore, updateValueStore, resetValueOpener, addValueOpener } from './utils/values';
+import {
+  setValueStore, updateValueStore, resetValueOpener, addValueOpener,
+} from './utils/values';
 
 const VM_VER = browser.runtime.getManifest().version;
 
-hookOptions(changes => {
+hookOptions((changes) => {
   if ('isApplied' in changes) setIcon(changes.isApplied);
   if ('autoUpdate' in changes) autoUpdate();
   if ('showBadge' in changes) updateBadges();
-  browser.runtime.sendMessage({
+  const SCRIPT_TEMPLATE = 'scriptTemplate';
+  if (SCRIPT_TEMPLATE in changes && !changes[SCRIPT_TEMPLATE]) {
+    setOption(SCRIPT_TEMPLATE, getDefaultOption(SCRIPT_TEMPLATE));
+  }
+  sendMessageOrIgnore({
     cmd: 'UpdateOptions',
     data: changes,
   });
@@ -36,11 +41,11 @@ hookOptions(changes => {
 function checkUpdateAll() {
   setOption('lastUpdate', Date.now());
   getScripts()
-  .then(scripts => {
+  .then((scripts) => {
     const toUpdate = scripts.filter(item => objectGet(item, 'config.shouldUpdate'));
     return Promise.all(toUpdate.map(checkUpdate));
   })
-  .then(updatedList => {
+  .then((updatedList) => {
     if (updatedList.some(Boolean)) sync.sync();
   });
 }
@@ -59,18 +64,31 @@ function autoUpdate() {
   }
 }
 
+function autoCheckRemove() {
+  checkRemove();
+  setTimeout(autoCheckRemove, 24 * 60 * 60 * 1000);
+}
+
 const commands = {
-  NewScript() {
-    return newScript();
+  NewScript(id) {
+    return id && cache.get(`new-${id}`) || newScript();
+  },
+  CacheNewScript(data) {
+    const id = getUniqId();
+    cache.put(`new-${id}`, newScript(data));
+    return id;
+  },
+  MarkRemoved({ id, removed }) {
+    return markRemoved(id, removed)
+    .then(() => { sync.sync(); });
   },
   RemoveScript(id) {
     return removeScript(id)
     .then(() => { sync.sync(); });
   },
-  GetData(clear) {
-    return (clear ? checkRemove() : Promise.resolve())
-    .then(getData)
-    .then(data => {
+  GetData() {
+    return getData()
+    .then((data) => {
       data.sync = sync.getStates();
       data.version = VM_VER;
       return data;
@@ -84,7 +102,7 @@ const commands = {
     };
     if (!data.isApplied) return data;
     return getScriptsByURL(url)
-    .then(res => {
+    .then((res) => {
       addValueOpener(src.id, Object.keys(res.values));
       return Object.assign(data, res);
     });
@@ -118,8 +136,8 @@ const commands = {
     // Value will be updated to store later.
     return updateValueStore(id, update);
   },
-  ExportZip({ ids, values }) {
-    return getExportData(ids, values);
+  ExportZip({ values }) {
+    return getExportData(values);
   },
   GetScriptCode(id) {
     return getScriptCode(id);
@@ -135,7 +153,7 @@ const commands = {
   },
   Vacuum: vacuum,
   ParseScript(data) {
-    return parseScript(data).then(res => {
+    return parseScript(data).then((res) => {
       browser.runtime.sendMessage(res);
       sync.sync();
       return res.data;
@@ -143,7 +161,7 @@ const commands = {
   },
   CheckUpdate(id) {
     getScript({ id }).then(checkUpdate)
-    .then(updated => {
+    .then((updated) => {
       if (updated) sync.sync();
     });
   },
@@ -153,11 +171,12 @@ const commands = {
   },
   GetRequestId: getRequestId,
   HttpRequest(details, src) {
-    httpRequest(details, res => {
+    httpRequest(details, (res) => {
       browser.__send(src.id, {
         cmd: 'HttpRequested',
         data: res,
-      });
+      })
+      .catch(noop);
     });
   },
   AbortRequest: abortRequest,
@@ -165,6 +184,7 @@ const commands = {
   SyncAuthorize: sync.authorize,
   SyncRevoke: sync.revoke,
   SyncStart: sync.sync,
+  SyncSetConfig: sync.setConfig,
   CacheLoad(data) {
     return cache.get(data) || null;
   },
@@ -184,7 +204,7 @@ const commands = {
   },
   SetOptions(data) {
     const items = Array.isArray(data) ? data : [data];
-    items.forEach(item => { setOption(item.key, item.value); });
+    items.forEach((item) => { setOption(item.key, item.value); });
   },
   ConfirmInstall: confirmInstall,
   // GetTabId(_, src) {
@@ -198,7 +218,7 @@ const commands = {
   // },
   CheckScript({ name, namespace }) {
     return getScript({ meta: { name, namespace } })
-    .then(script => (script ? script.meta.version : null));
+    .then(script => (script && !script.config.removed ? script.meta.version : null));
   },
   CheckPosition() {
     return sortScripts();
@@ -229,7 +249,7 @@ function initLoadedPages() {
     }
     reload();
   };
-  const injectScript = script => {
+  const injectScript = (script) => {
     const el = document.createElement('script');
     el.textContent = script;
     document.body.appendChild(el);
@@ -240,8 +260,8 @@ function initLoadedPages() {
   const reloadHTTPS = getOption('reloadHTTPS');
   const br = window.external.mxGetRuntime().create('mx.browser');
   browser.tabs.query({})
-  .then(tabs => {
-    tabs.forEach(tab => {
+  .then((tabs) => {
+    tabs.forEach((tab) => {
       const protocol = tab.url.match(/^http(s?):/);
       if (protocol && (!protocol[1] || reloadHTTPS)) {
         br.executeScript(wrapped, tab.id);
@@ -260,7 +280,7 @@ initialize()
       if (typeof res !== 'undefined') {
         // If res is not instance of native Promise, browser APIs will not wait for it.
         res = Promise.resolve(res)
-        .then(data => ({ data }), error => {
+        .then(data => ({ data }), (error) => {
           if (process.env.DEBUG) console.error(error);
           return { error };
         });
@@ -272,7 +292,7 @@ initialize()
   setTimeout(autoUpdate, 2e4);
   sync.initialize();
   resetBlacklist();
-  checkRemove();
+  autoCheckRemove();
   if (getOption('startReload')) initLoadedPages();
 });
 
@@ -291,7 +311,7 @@ function setBadge({ ids, reset }, src) {
   }
   data.number += ids.length;
   if (ids) {
-    ids.forEach(id => {
+    ids.forEach((id) => {
       data.idMap[id] = 1;
     });
     data.unique = Object.keys(data.idMap).length;
@@ -313,13 +333,13 @@ function updateBadge(tabId) {
 }
 function updateBadges() {
   browser.tabs.query({})
-  .then(tabs => {
-    tabs.forEach(tab => {
+  .then((tabs) => {
+    tabs.forEach((tab) => {
       updateBadge(tab.id);
     });
   });
 }
-browser.tabs.onRemoved.addListener(id => {
+browser.tabs.onRemoved.addListener((id) => {
   delete badges[id];
 });
 

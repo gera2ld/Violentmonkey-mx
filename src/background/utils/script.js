@@ -1,3 +1,6 @@
+import { encodeFilename } from '#/common';
+import { getOption } from './options';
+
 const metaStart = '==UserScript==';
 const metaEnd = '==/UserScript==';
 
@@ -45,7 +48,7 @@ export function parseMeta(code) {
     [key]: metaTypes[key].default(),
   }), {});
   let flag = -1;
-  code.replace(/(?:^|\n)\/\/\s*([@=]\S+)(.*)/g, (_match, group1, group2) => {
+  code.replace(/(?:^|\n)\s*\/\/\s*([@=]\S+)(.*)/g, (_match, group1, group2) => {
     if (flag < 0 && group1 === metaStart) {
       // start meta
       flag = 1;
@@ -71,22 +74,27 @@ export function parseMeta(code) {
   return meta;
 }
 
-export function newScript() {
-  const code = `\
-// ==UserScript==
-// @name New Script
-// @namespace Violentmonkey Scripts
-// @match *://*/*
-// @grant none
-// ==/UserScript==
-`;
+export function getDefaultCustom() {
+  return {
+    origInclude: true,
+    origExclude: true,
+    origMatch: true,
+    origExcludeMatch: true,
+  };
+}
+
+export function newScript(data) {
+  const state = {
+    url: '*://*/*',
+    ...data,
+  };
+  const code = getOption('scriptTemplate')
+  .replace(/{{(\w+)}}/g, (str, name) => {
+    const value = state[name];
+    return value == null ? str : value;
+  });
   const script = {
-    custom: {
-      origInclude: true,
-      origExclude: true,
-      origMatch: true,
-      origExcludeMatch: true,
-    },
+    custom: getDefaultCustom(),
     config: {
       enabled: 1,
       shouldUpdate: 1,
@@ -99,17 +107,7 @@ export function newScript() {
 export function getNameURI(script) {
   const ns = script.meta.namespace || '';
   const name = script.meta.name || '';
-  let nameURI = `${escape(ns)}:${escape(name)}:`;
+  let nameURI = encodeFilename(`${ns}\n${name}\n`);
   if (!ns && !name) nameURI += script.props.id || '';
   return nameURI;
-}
-
-export function compareVersion(ver1, ver2) {
-  const parts1 = (ver1 || '').split('.');
-  const parts2 = (ver2 || '').split('.');
-  for (let i = 0; i < parts1.length || i < parts2.length; i += 1) {
-    const delta = (parseInt(parts1[i], 10) || 0) - (parseInt(parts2[i], 10) || 0);
-    if (delta) return delta < 0 ? -1 : 1;
-  }
-  return 0;
 }

@@ -1,10 +1,12 @@
 // Reference:
 // - https://developers.google.com/drive/v3/reference/files
 // - https://github.com/google/google-api-nodejs-client
-import { getUniqId } from 'src/common';
-import { objectGet } from 'src/common/object';
+import { getUniqId, noop } from '#/common';
+import { objectGet } from '#/common/object';
 import { dumpQuery, notify } from '../utils';
-import { getURI, getItemFilename, BaseService, register, isScriptFile } from './base';
+import {
+  getURI, getItemFilename, BaseService, register, isScriptFile,
+} from './base';
 
 const SECRET_KEY = JSON.parse(window.atob('eyJjbGllbnRfc2VjcmV0IjoiTjBEbTZJOEV3bkJaeE1xMUpuMHN3UER0In0='));
 const config = Object.assign({
@@ -35,7 +37,7 @@ const GoogleDrive = BaseService.extend({
       responseType: 'json',
     });
     return requestUser()
-    .then(info => {
+    .then((info) => {
       // If access was granted with access_type=online, revoke it.
       if (info.access_type === 'online') {
         return this.loadData({
@@ -56,7 +58,7 @@ const GoogleDrive = BaseService.extend({
       }
       if (info.scope !== config.scope) return Promise.reject(UNAUTHORIZED);
     })
-    .catch(res => {
+    .catch((res) => {
       if (res === UNAUTHORIZED || res.status === 400 && objectGet(res, 'data.error_description') === 'Invalid Value') {
         return this.refreshToken().then(requestUser);
       }
@@ -77,7 +79,7 @@ const GoogleDrive = BaseService.extend({
     })
     .then(({ files }) => {
       let metaFile;
-      const remoteData = files.filter(item => {
+      const remoteData = files.filter((item) => {
         if (isScriptFile(item.name)) return true;
         if (!metaFile && item.name === this.metaFile) {
           metaFile = item;
@@ -87,7 +89,7 @@ const GoogleDrive = BaseService.extend({
         return false;
       })
       .map(normalize)
-      .filter(item => {
+      .filter((item) => {
         if (!item.size) {
           this.remove(item);
           return false;
@@ -152,7 +154,7 @@ const GoogleDrive = BaseService.extend({
       }, params)),
       responseType: 'json',
     })
-    .then(data => {
+    .then((data) => {
       if (data.access_token) {
         const update = {
           token: data.access_token,
@@ -166,9 +168,7 @@ const GoogleDrive = BaseService.extend({
       }
     });
   },
-  handleMetaError() {
-    return {};
-  },
+  handleMetaError: noop,
   list() {
     throw new Error('Not supported');
   },
@@ -225,6 +225,7 @@ register(GoogleDrive);
 function normalize(item) {
   return {
     id: item.id,
+    name: item.name,
     size: +item.size,
     uri: getURI(item.name),
   };

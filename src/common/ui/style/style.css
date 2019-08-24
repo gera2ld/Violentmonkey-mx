@@ -11,6 +11,7 @@ html {
 body {
   font-size: 1rem;
   background: white;
+  color: black;
 }
 
 // Form elements will not inherit
@@ -40,16 +41,35 @@ hr {
 input[disabled] ~ * {
   color: gray;
 }
-input[type=text] {
-  display: block;
-  width: 100%;
+input[type=text],
+input[type=password] {
+  line-height: 1.5rem;
+  &[disabled] {
+    background: #eee;
+    cursor: not-allowed;
+  }
 }
 textarea {
   display: block;
   width: 100%;
 }
+input[type=text],
+input[type=password],
+textarea {
+  padding: 0 .5rem;
+  border: 1px solid #ccc;
+  &:focus {
+    border-color: darkgray;
+  }
+}
 code {
-  background: #F7E999;
+  background: #f7e999;
+}
+
+fieldset {
+  display: inline-block;
+  padding: .5rem;
+  border: 1px solid #ccc;
 }
 
 :focus {
@@ -66,19 +86,39 @@ svg {
   fill: currentColor;
 }
 
-.btn-ghost,
-.sep,
 button {
+  border: 1px solid #afafaf;
+  background: #f4f4f4;
+  color: black;
+  &:hover {
+    background: #e4e4e4;
+  }
+  &:active {
+    background: #bfbfbf;
+  }
+  &[disabled] {
+    color: #d0d0d0;
+    border-color: #d0d0d0;
+    background: #f0f0f0;
+  }
+  &:not([disabled]) {
+    cursor: pointer;
+  }
+}
+
+button,
+.btn-ghost,
+.sep {
   display: inline-block;
   padding: 0 .5rem;
   font-size: 1rem;
   line-height: 1.5;
-  cursor: pointer;
   vertical-align: bottom;
 }
 .btn-ghost {
   color: inherit;
   border: 1px solid transparent;
+  cursor: pointer;
   &:hover {
     border-color: #bbb;
     background: white;
@@ -86,6 +126,10 @@ button {
   > .icon {
     display: block;
     height: 2rem;
+  }
+  &.active {
+    background: #eee;
+    border-color: #aaa;
   }
 }
 
@@ -108,6 +152,9 @@ button {
 .flex-col {
   flex-direction: column;
 }
+.flex-wrap {
+  flex-wrap: wrap;
+}
 .flex-auto {
   flex: auto;
   .flex-col > & {
@@ -116,6 +163,9 @@ button {
   :not(.flex-col) > & {
     width: 0;
   }
+}
+.flex-1 {
+  flex: 1;
 }
 .pos-rel {
   position: relative;
@@ -129,6 +179,9 @@ button {
 .ml-2 {
   margin-left: 1em;
 }
+.mr-2 {
+  margin-right: 1em;
+}
 .mt-1 {
   margin-top: .5em;
 }
@@ -141,6 +194,10 @@ button {
 .mx-1 {
   margin-left: .5em;
   margin-right: .5em;
+}
+.my-1 {
+  margin-top: .5em;
+  margin-bottom: .5em;
 }
 .h-100 {
   height: 100%;
@@ -166,6 +223,15 @@ button {
   text-overflow: ellipsis;
   overflow: hidden;
 }
+.text-center {
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
+.scroll-y {
+  overflow-y: auto;
+}
 
 .frame {
   background: #f0f0f0;
@@ -177,7 +243,11 @@ button {
 .editor-code .CodeMirror {
   height: 100%;
   /* Use `Courier New` to ensure `&nbsp;` has the same width as an original space. */
-  font-family: Courier New, Courier, monospace;
+  font-family: "Fira Code", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", Courier, monospace;
+}
+
+.vl-tooltip {
+  z-index: 10000 !important;
 }
 
 .vl-dropdown-menu {
@@ -190,4 +260,22 @@ button {
   margin: 0 auto;
   padding: 1rem;
   background: white;
+}
+
+@media (min-width: 768px) {
+  .visible-sm {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .hidden-sm {
+    display: none !important;
+  }
+}
+
+@media (max-width: 319px) {
+  .hidden-xs {
+    display: none !important;
+  }
 }

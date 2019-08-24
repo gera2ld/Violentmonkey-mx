@@ -1,4 +1,6 @@
-import { getUniqId, request, i18n, buffer2string } from 'src/common';
+import {
+  getUniqId, request, i18n, buffer2string,
+} from '#/common';
 import cache from './cache';
 import { isUserScript } from './script';
 
@@ -16,7 +18,7 @@ export function getRequestId() {
 function xhrCallbackWrapper(req) {
   let lastPromise = Promise.resolve();
   const { xhr } = req;
-  return evt => {
+  return (evt) => {
     const res = {
       id: req.id,
       type: evt.type,
@@ -36,7 +38,7 @@ function xhrCallbackWrapper(req) {
       // ignore if responseText is unreachable
     }
     if (evt.type === 'progress') {
-      ['lengthComputable', 'loaded', 'total'].forEach(key => {
+      ['lengthComputable', 'loaded', 'total'].forEach((key) => {
         data[key] = evt[key];
       });
     }
@@ -61,12 +63,13 @@ export function httpRequest(details, cb) {
   const req = requests[details.id];
   if (!req || req.cb) return;
   req.cb = cb;
+  req.anonymous = details.anonymous;
   const { xhr } = req;
   try {
-    xhr.open(details.method, details.url, true, details.user, details.password);
+    xhr.open(details.method, details.url, true, details.user || '', details.password || '');
     xhr.setRequestHeader('VM-Verify', details.id);
     if (details.headers) {
-      Object.keys(details.headers).forEach(key => {
+      Object.keys(details.headers).forEach((key) => {
         xhr.setRequestHeader(key, details.headers[key]);
       });
     }
@@ -83,7 +86,7 @@ export function httpRequest(details, cb) {
       'readystatechange',
       'timeout',
     ]
-    .forEach(evt => { xhr[`on${evt}`] = callback; });
+    .forEach((evt) => { xhr[`on${evt}`] = callback; });
     // req.finalUrl = details.url;
     const { data } = details;
     const body = data ? decodeBody(data) : null;
@@ -110,8 +113,8 @@ function decodeBody(obj) {
   if (cls === 'formdata') {
     const result = new FormData();
     if (value) {
-      Object.keys(value).forEach(key => {
-        value[key].forEach(item => {
+      Object.keys(value).forEach((key) => {
+        value[key].forEach((item) => {
           result.append(key, decodeBody(item));
         });
       });
@@ -169,7 +172,7 @@ export function confirmInstall(info) {
       return data;
     })
   )
-  .then(code => {
+  .then((code) => {
     cache.put(info.url, code, 3000);
     const confirmKey = getUniqId();
     cache.put(`confirm-${confirmKey}`, {

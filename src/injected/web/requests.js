@@ -4,6 +4,8 @@ import bridge from './bridge';
 const map = {};
 const queue = [];
 
+const NS_HTML = 'http://www.w3.org/1999/xhtml';
+
 export function onRequestCreate(details) {
   const req = {
     details,
@@ -19,7 +21,7 @@ export function onRequestCreate(details) {
 
 export function onRequestStart(id) {
   const req = queue.shift();
-  start(req, id);
+  if (req) start(req, id);
 }
 
 export function onRequestCallback(res) {
@@ -80,6 +82,7 @@ function start(req, id) {
   const { details } = req;
   const payload = {
     id,
+    anonymous: details.anonymous,
     method: details.method,
     url: details.url,
     user: details.user,
@@ -90,11 +93,16 @@ function start(req, id) {
   };
   req.id = id;
   map[id] = req;
-  if (includes(['arraybuffer', 'blob'], details.responseType)) {
-    payload.responseType = 'arraybuffer';
+  const { responseType } = details;
+  if (responseType) {
+    if (includes(['arraybuffer', 'blob'], responseType)) {
+      payload.responseType = 'arraybuffer';
+    } else if (!includes(['json', 'text'], responseType)) {
+      console.warn(`[Violentmonkey] Unknown responseType "${responseType}", see https://violentmonkey.github.io/api/gm/#gm_xmlhttprequest for more detail.`);
+    }
   }
   encodeBody(details.data)
-  .then(body => {
+  .then((body) => {
     payload.data = body;
     bridge.post({
       cmd: 'HttpRequest',
@@ -104,7 +112,7 @@ function start(req, id) {
 }
 
 function getFullUrl(url) {
-  const a = document.createElement('a');
+  const a = document.createElementNS(NS_HTML, 'a');
   a.setAttribute('href', url);
   return a.href;
 }

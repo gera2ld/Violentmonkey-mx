@@ -1,9 +1,10 @@
-import 'src/common/browser';
 import Vue from 'vue';
-import { i18n, sendMessage, injectContent, debounce } from 'src/common';
-import handlers from 'src/common/handlers';
-import * as tld from 'src/common/tld';
-import 'src/common/ui/style';
+import {
+  i18n, sendMessage, injectContent, debounce,
+} from '#/common';
+import handlers from '#/common/handlers';
+import * as tld from '#/common/tld';
+import '#/common/ui/style';
 import App from './views/app';
 import { store } from './utils';
 
@@ -11,9 +12,12 @@ tld.initTLD();
 
 Vue.prototype.i18n = i18n;
 
+const el = document.createElement('div');
+document.body.appendChild(el);
 new Vue({
   render: h => h(App),
-}).$mount('#app');
+})
+.$mount(el);
 
 const init = debounce(() => {
   injectContent('setPopup()');
@@ -25,18 +29,22 @@ Object.assign(handlers, {
   GetPopup: init,
   SetPopup(data, src) {
     cancelClear();
-    store.currentSrc = src;
+    store.currentTab = src;
     if (/^https?:\/\//i.test(src.tab.url)) {
       const matches = src.tab.url.match(/:\/\/([^/]*)/);
       const domain = matches[1];
       store.domain = tld.getDomain(domain) || domain;
     }
-    store.commands = data.menus;
+    store.commands = Object.entries(data.menus)
+    .reduce((map, [id, values]) => {
+      map[id] = Object.keys(values).sort();
+      return map;
+    }, {});
     sendMessage({
       cmd: 'GetMetas',
       data: data.ids,
     })
-    .then(scripts => {
+    .then((scripts) => {
       store.scripts = scripts;
     });
   },

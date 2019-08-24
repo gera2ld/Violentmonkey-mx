@@ -6,11 +6,11 @@ const uglify = require('gulp-uglify');
 const plumber = require('gulp-plumber');
 const yaml = require('js-yaml');
 const webpack = require('webpack');
+const { isProd } = require('@gera2ld/plaid/util');
 const webpackConfig = require('./scripts/webpack.conf');
 const i18n = require('./scripts/i18n');
 const string = require('./scripts/string');
 const bom = require('./scripts/bom');
-const { isDev, isProd, definitions } = require('./scripts/utils');
 const pkg = require('./package.json');
 
 const DIST = 'dist';
@@ -58,21 +58,13 @@ function watch() {
   gulp.watch(paths.locales.concat(paths.templates), copyI18n);
 }
 
-function jsDev(done) {
-  let firstRun = true;
-  webpack(webpackConfig).watch({}, (...args) => {
-    webpackCallback(...args);
-    if (firstRun) {
-      firstRun = false;
-      done();
-    }
-  });
+async function jsDev() {
+  require('@gera2ld/plaid-webpack/bin/develop')();
 }
 
-function jsProd(done) {
-  webpack(webpackConfig, (...args) => {
-    webpackCallback(...args);
-    done();
+async function jsProd() {
+  return require('@gera2ld/plaid-webpack/bin/build')({
+    api: true,
   });
 }
 
@@ -82,8 +74,8 @@ function manifest() {
   .pipe(string((input, file) => {
     const data = yaml.safeLoad(input);
     data[0].version = pkg.version;
-    data[0].service.debug = isDev;
-    definitions['process.env'].manifest = JSON.stringify(data[0]);
+    data[0].service.debug = !isProd;
+    process.env.MANIFEST = JSON.stringify(data[0]);
     file.path = file.path.replace(/\.yml$/, '.json');
     return JSON.stringify(data);
   }))
@@ -100,6 +92,14 @@ function copyFiles() {
   .pipe(jsFilter.restore);
   return stream
   .pipe(gulp.dest(DIST));
+}
+
+function checkI18n() {
+  return gulp.src(paths.templates)
+  .pipe(i18n.extract({
+    base: 'src/_locales',
+    extension: '.ini',
+  }));
 }
 
 function copyI18n() {
@@ -137,9 +137,10 @@ function logError(err) {
   return this.emit('end');
 }
 
-const pack = gulp.parallel(manifest, copyFiles, copyI18n);
+const pack = gulp.parallel(copyFiles, copyI18n);
 
 exports.clean = clean;
-exports.dev = gulp.series(gulp.parallel(pack, jsDev), watch);
-exports.build = gulp.parallel(pack, jsProd);
+exports.dev = gulp.series(manifest, gulp.parallel(pack, jsDev), watch);
+exports.build = gulp.series(manifest, gulp.parallel(pack, jsProd));
 exports.i18n = updateI18n;
+exports.check = checkI18n;

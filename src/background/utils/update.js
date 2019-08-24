@@ -1,8 +1,9 @@
-import { i18n, request } from 'src/common';
+import { i18n, request, compareVersion } from '#/common';
+import { CMD_SCRIPT_UPDATE } from '#/common/consts';
 import { parseScript } from './db';
-import { parseMeta, compareVersion } from './script';
+import { parseMeta } from './script';
 import { getOption } from './options';
-import { notify } from '.';
+import { notify, sendMessageOrIgnore } from './message';
 
 const processes = {};
 
@@ -11,7 +12,7 @@ function doCheckUpdate(script) {
     checking: true,
   };
   const res = {
-    cmd: 'UpdateScript',
+    cmd: CMD_SCRIPT_UPDATE,
     data: {
       where: {
         id: script.props.id,
@@ -30,34 +31,34 @@ function doCheckUpdate(script) {
     if (compareVersion(script.meta.version, meta.version) < 0) return Promise.resolve();
     update.checking = false;
     update.message = i18n('msgNoUpdate');
-    browser.runtime.sendMessage(res);
+    sendMessageOrIgnore(res);
     return Promise.reject();
   };
   const errHandler = () => {
     update.checking = false;
     update.message = i18n('msgErrorFetchingUpdateInfo');
-    browser.runtime.sendMessage(res);
+    sendMessageOrIgnore(res);
     return Promise.reject();
   };
   const doUpdate = () => {
     if (!downloadURL) {
-      update.message = `<span class="new">${i18n('msgNewVersion')}</span>`;
-      browser.runtime.sendMessage(res);
+      update.message = i18n('msgNewVersion');
+      sendMessageOrIgnore(res);
       return Promise.reject();
     }
     update.message = i18n('msgUpdating');
-    browser.runtime.sendMessage(res);
+    sendMessageOrIgnore(res);
     return request(downloadURL)
     .then(({ data }) => data, () => {
       update.checking = false;
       update.message = i18n('msgErrorFetchingScript');
-      browser.runtime.sendMessage(res);
+      sendMessageOrIgnore(res);
       return Promise.reject();
     });
   };
   if (!updateURL) return Promise.reject();
   update.message = i18n('msgCheckingForUpdate');
-  browser.runtime.sendMessage(res);
+  sendMessageOrIgnore(res);
   return request(updateURL, {
     headers: {
       Accept: 'text/x-userscript-meta',
@@ -76,11 +77,12 @@ export default function checkUpdate(script) {
     .then(code => parseScript({
       id,
       code,
+      update: {
+        checking: false,
+      },
     }))
-    .then(res => {
+    .then((res) => {
       const { data: { update } } = res;
-      update.checking = false;
-      browser.runtime.sendMessage(res);
       updated = true;
       if (getOption('notifyUpdates')) {
         notify({
@@ -89,7 +91,7 @@ export default function checkUpdate(script) {
         });
       }
     })
-    .catch(err => {
+    .catch((err) => {
       if (process.env.DEBUG) console.error(err);
     })
     .then(() => {

@@ -1,62 +1,85 @@
 <template>
-  <div class="script" :class="{ disabled: !script.config.enabled, removed: script.config.removed }" :draggable="draggable" @dragstart.prevent="onDragStart">
-    <img class="script-icon" :src="safeIcon">
+  <div
+    class="script"
+    :class="{ disabled: !script.config.enabled, removed: script.config.removed }"
+    :draggable="draggable"
+    @dragstart.prevent="onDragStart">
+    <img class="script-icon hidden-xs" :src="safeIcon">
     <div class="script-info flex">
-      <div class="script-name ellipsis" v-text="script._cache.name"></div>
-      <div class="flex-auto"></div>
-      <tooltip :title="i18n('labelAuthor') + script.meta.author" class="script-author ml-1" v-if="author" align="end">
+      <div class="script-name ellipsis flex-auto" v-text="script.$cache.name"></div>
+      <tooltip
+        v-if="author"
+        :content="i18n('labelAuthor') + script.meta.author"
+        class="script-author ml-1 hidden-sm"
+        align="end">
         <icon name="author"></icon>
-        <a class="ellipsis ml-1" :href="`mailto:${author.email}`" v-if="author.email" v-text="author.name"></a>
+        <a
+          v-if="author.email"
+          class="ellipsis ml-1"
+          :href="`mailto:${author.email}`"
+          v-text="author.name"
+        />
         <span class="ellipsis ml-1" v-else v-text="author.name"></span>
       </tooltip>
-      <tooltip :title="lastUpdated.title" class="ml-1" align="end">
+      <tooltip class="ml-1 hidden-sm" :content="updatedAt.title" align="end">
         <span v-text="script.meta.version ? `v${script.meta.version}` : ''"></span>
-        <span class="secondary ml-1" v-text="lastUpdated.show"></span>
+        <span class="ml-1" v-text="updatedAt.show"></span>
       </tooltip>
-      <div v-if="script.config.removed" class="ml-1" v-text="i18n('labelRemoved')"></div>
       <div v-if="script.config.removed" class="ml-1">
-        <tooltip :title="i18n('buttonUndo')" placement="left">
-          <span class="btn-ghost" @click="onRemove(0)">
+        <tooltip :content="i18n('buttonRestore')" placement="left">
+          <span class="btn-ghost" @click="onRestore">
             <icon name="undo"></icon>
           </span>
         </tooltip>
       </div>
     </div>
     <div class="script-buttons flex">
-      <tooltip :title="i18n('buttonEdit')" align="start">
-        <span class="btn-ghost" @click="onEdit">
-          <icon name="code"></icon>
-        </span>
-      </tooltip>
-      <tooltip :title="labelEnable" align="start">
-        <span class="btn-ghost" @click="onEnable">
-          <icon :name="`toggle-${script.config.enabled ? 'on' : 'off'}`"></icon>
-        </span>
-      </tooltip>
-      <tooltip :disabled="!canUpdate || script.checking" :title="i18n('buttonUpdate')" align="start">
-        <span class="btn-ghost" @click="onUpdate">
-          <icon name="refresh"></icon>
-        </span>
-      </tooltip>
-      <span class="sep"></span>
-      <tooltip :disabled="!homepageURL" :title="i18n('buttonHome')" align="start">
-        <a class="btn-ghost" target="_blank" :href="homepageURL">
-          <icon name="home"></icon>
-        </a>
-      </tooltip>
-      <tooltip :disabled="!description" :title="description" align="start">
-        <span class="btn-ghost">
-          <icon name="info"></icon>
-        </span>
-      </tooltip>
-      <tooltip :disabled="!script.meta.supportURL" :title="i18n('buttonSupport')" align="start">
-        <a class="btn-ghost" target="_blank" :href="script.meta.supportURL">
-          <icon name="question"></icon>
-        </a>
-      </tooltip>
-      <div class="flex-auto" v-text="script.message"></div>
-      <tooltip :title="i18n('buttonRemove')" align="end">
-        <span class="btn-ghost" @click="onRemove(1)">
+      <div class="flex-auto flex flex-wrap">
+        <tooltip :content="i18n('buttonEdit')" align="start">
+          <span class="btn-ghost" @click="onEdit">
+            <icon name="code"></icon>
+          </span>
+        </tooltip>
+        <tooltip :content="labelEnable" align="start">
+          <span class="btn-ghost" @click="onEnable">
+            <icon :name="`toggle-${script.config.enabled ? 'on' : 'off'}`"></icon>
+          </span>
+        </tooltip>
+        <tooltip
+          :disabled="!canUpdate || script.checking"
+          :content="i18n('buttonUpdate')"
+          align="start">
+          <span class="btn-ghost" @click="onUpdate">
+            <icon name="refresh"></icon>
+          </span>
+        </tooltip>
+        <span class="sep"></span>
+        <tooltip :disabled="!homepageURL" :content="i18n('buttonHome')" align="start">
+          <a class="btn-ghost" target="_blank" rel="noopener noreferrer" :href="homepageURL">
+            <icon name="home"></icon>
+          </a>
+        </tooltip>
+        <tooltip :disabled="!description" :content="description" align="start">
+          <span class="btn-ghost">
+            <icon name="info"></icon>
+          </span>
+        </tooltip>
+        <tooltip
+          :disabled="!script.meta.supportURL"
+          :content="i18n('buttonSupport')"
+          align="start">
+          <a
+            class="btn-ghost"
+            target="_blank"
+            rel="noopener noreferrer"
+            :href="script.meta.supportURL">
+            <icon name="question"></icon>
+          </a>
+        </tooltip>
+        <div class="script-message" v-text="script.message"></div>
+      </div>
+      <tooltip :content="i18n('buttonRemove')" align="end">
+        <span class="btn-ghost" @click="onRemove">
           <icon name="trash"></icon>
         </span>
       </tooltip>
@@ -65,10 +88,10 @@
 </template>
 
 <script>
-import Tooltip from 'vueleton/lib/tooltip';
-import { sendMessage, getLocaleString } from 'src/common';
-import { objectGet } from 'src/common/object';
-import Icon from 'src/common/ui/icon';
+import Tooltip from 'vueleton/lib/tooltip/bundle';
+import { sendMessage, getLocaleString, formatTime } from '#/common';
+import { objectGet } from '#/common/object';
+import Icon from '#/common/ui/icon';
 import { store } from '../utils';
 
 const DEFAULT_ICON = '/icons/icon_48.png';
@@ -109,11 +132,11 @@ export default {
     canUpdate() {
       const { script } = this;
       return script.config.shouldUpdate && (
-        script.custom.updateURL ||
-        script.meta.updateURL ||
-        script.custom.downloadURL ||
-        script.meta.downloadURL ||
-        script.custom.lastInstallURL
+        script.custom.updateURL
+        || script.meta.updateURL
+        || script.custom.downloadURL
+        || script.meta.downloadURL
+        || script.custom.lastInstallURL
       );
     },
     homepageURL() {
@@ -135,29 +158,24 @@ export default {
     description() {
       return this.script.custom.description || getLocaleString(this.script.meta, 'description');
     },
-    lastUpdated() {
-      const { props } = this.script;
-      // XXX use `lastModified` as a fallback for scripts without `lastUpdated`
-      const lastUpdated = props.lastUpdated || props.lastModified;
+    updatedAt() {
+      const { props, config } = this.script;
       const ret = {};
-      if (lastUpdated) {
-        let delta = (Date.now() - lastUpdated) / 1000 / 60;
-        const units = [
-          ['min', 60],
-          ['h', 24],
-          ['d', 1000, 365],
-          ['y'],
-        ];
-        const unitInfo = units.find(item => {
-          const max = item[1];
-          if (!max || delta < max) return true;
-          const step = item[2] || max;
-          delta /= step;
-          return false;
-        });
-        const date = new Date(lastUpdated);
-        ret.title = this.i18n('labelLastUpdatedAt', date.toLocaleString());
-        ret.show = `${delta | 0}${unitInfo[0]}`;
+      let lastModified;
+      if (config.removed) {
+        ({ lastModified } = props);
+      } else {
+        // XXX use `lastModified` as a fallback for scripts without `lastUpdated`
+        lastModified = props.lastUpdated || props.lastModified;
+      }
+      if (lastModified) {
+        const date = new Date(lastModified);
+        ret.show = formatTime(Date.now() - lastModified);
+        if (config.removed) {
+          ret.title = this.i18n('labelRemovedAt', date.toLocaleString());
+        } else {
+          ret.title = this.i18n('labelLastUpdatedAt', date.toLocaleString());
+        }
       }
       return ret;
     },
@@ -168,7 +186,7 @@ export default {
       const pathMap = objectGet(this.script, 'custom.pathMap') || {};
       const fullUrl = pathMap[icon] || icon;
       loadImage(fullUrl)
-      .then(url => {
+      .then((url) => {
         this.safeIcon = url;
       }, () => {
         this.safeIcon = DEFAULT_ICON;
@@ -179,16 +197,22 @@ export default {
     onEdit() {
       this.$emit('edit', this.script.props.id);
     },
-    onRemove(remove) {
+    markRemoved(removed) {
       sendMessage({
-        cmd: 'UpdateScriptInfo',
+        cmd: 'MarkRemoved',
         data: {
           id: this.script.props.id,
-          config: {
-            removed: remove ? 1 : 0,
-          },
+          removed,
         },
       });
+    },
+    onRemove() {
+      const rect = this.$el.getBoundingClientRect();
+      this.markRemoved(1);
+      this.$emit('remove', this.script.props.id, rect);
+    },
+    onRestore() {
+      this.markRemoved(0);
     },
     onEnable() {
       sendMessage({
@@ -211,14 +235,13 @@ export default {
       const el = e.currentTarget;
       const parent = el.parentNode;
       const rect = el.getBoundingClientRect();
-      const next = el.nextElementSibling;
       const dragging = {
         el,
         offset: {
           x: e.clientX - rect.left,
           y: e.clientY - rect.top,
         },
-        delta: (next ? next.getBoundingClientRect().top : parent.offsetHeight) - rect.top,
+        delta: rect.height,
         index: [].indexOf.call(parent.children, el),
         elements: [].filter.call(parent.children, child => child !== el),
         dragged: el.cloneNode(true),
@@ -242,7 +265,7 @@ export default {
       } = dragging;
       dragged.style.left = `${e.clientX - offset.x}px`;
       dragged.style.top = `${e.clientY - offset.y}px`;
-      let hoveredIndex = elements.findIndex(item => {
+      let hoveredIndex = elements.findIndex((item) => {
         if (!item || item.classList.contains('dragging-moving')) return false;
         const rect = item.getBoundingClientRect();
         return (
@@ -284,7 +307,7 @@ export default {
       });
     },
     onDragAnimate(elements, delta) {
-      elements.forEach(el => {
+      elements.forEach((el) => {
         if (!el) return;
         el.classList.add('dragging-moving');
         el.style.transition = 'none';
@@ -367,17 +390,15 @@ export default {
     }
   }
   &-buttons {
-    margin-left: 3.5rem;
-    align-items: center;
     line-height: 1;
     color: #3e4651;
-    > .flex-auto {
-      margin-left: 1rem;
+    > .flex {
+      align-items: center;
     }
     .removed & {
       display: none;
     }
-    > .disabled {
+    .disabled {
       color: gainsboro;
     }
     .icon {
@@ -385,7 +406,6 @@ export default {
     }
   }
   &-info {
-    margin-left: 3.5rem;
     line-height: 1.5;
     align-items: center;
   }
@@ -401,6 +421,9 @@ export default {
     .removed & {
       width: 2rem;
       height: 2rem;
+    }
+    ~ * {
+      margin-left: 3.5rem;
     }
   }
   &-name {
@@ -418,6 +441,9 @@ export default {
       display: inline-block;
       max-width: 100px;
     }
+  }
+  &-message {
+    white-space: nowrap;
   }
 }
 .dragging {

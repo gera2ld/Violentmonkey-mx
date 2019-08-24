@@ -3,15 +3,21 @@ body {
   height: 100%;
 }
 aside {
-  flex: 0 0 14rem;
+  position: relative;
+  z-index: 1000;
+}
+.aside-content {
+  width: 14rem;
+  height: 100%;
   padding: 4rem 1rem 0;
   text-align: right;
+  border-right: 1px solid darkgray;
   background: #fafafa;
   img {
     width: 5rem;
   }
 }
-.sidemenu {
+.aside-menu {
   border-top: 1px solid #bbb;
   > a {
     display: block;
@@ -62,11 +68,14 @@ section {
   position: relative;
   padding: 1.2rem;
   background: white;
-  border-left: 1px solid darkgray;
 }
 
 input[type=checkbox] {
   margin-right: .5em;
+}
+
+.vl-modal {
+  z-index: 3000;
 }
 
 .in-out {

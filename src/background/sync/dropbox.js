@@ -1,5 +1,7 @@
 import { loadQuery, dumpQuery } from '../utils';
-import { getURI, getItemFilename, BaseService, isScriptFile, register } from './base';
+import {
+  getURI, getItemFilename, BaseService, isScriptFile, register,
+} from './base';
 
 const config = {
   client_id: 'f0q12zup2uys5w8',
@@ -14,7 +16,7 @@ const Dropbox = BaseService.extend({
       method: 'POST',
       url: 'https://api.dropboxapi.com/2/users/get_current_account',
     })
-    .catch(err => {
+    .catch((err) => {
       if (err.status === 401) {
         return Promise.reject({
           type: 'unauthorized',
@@ -27,8 +29,7 @@ const Dropbox = BaseService.extend({
     });
   },
   handleMetaError(res) {
-    if (res.status === 409) return {};
-    throw res;
+    if (res.status !== 409) throw res;
   },
   list() {
     return this.loadData({
@@ -122,6 +123,7 @@ register(Dropbox);
 
 function normalize(item) {
   return {
+    name: item.name,
     size: item.size,
     uri: getURI(item.name),
     // modified: new Date(item.server_modified).getTime(),

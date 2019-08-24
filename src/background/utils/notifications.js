@@ -1,8 +1,8 @@
-import { i18n, defaultImage } from 'src/common';
+import { i18n, defaultImage } from '#/common';
 
 const openers = {};
 
-browser.notifications.onClicked.addListener(id => {
+browser.notifications.onClicked.addListener((id) => {
   const openerSrcId = openers[id];
   if (openerSrcId) {
     browser.__send(openerSrcId, {
@@ -12,7 +12,7 @@ browser.notifications.onClicked.addListener(id => {
   }
 });
 
-browser.notifications.onClosed.addListener(id => {
+browser.notifications.onClosed.addListener((id) => {
   const openerSrcId = openers[id];
   if (openerSrcId) {
     browser.__send(openerSrcId, {
@@ -29,7 +29,7 @@ export default function createNotification(data, src) {
     message: data.text,
     iconUrl: data.image || defaultImage,
   })
-  .then(notificationId => {
+  .then((notificationId) => {
     openers[notificationId] = src.id;
     return notificationId;
   });

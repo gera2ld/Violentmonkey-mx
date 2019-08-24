@@ -51,27 +51,27 @@ export default () => new Promise((resolve, reject) => {
       processing -= 1;
       if (!processing) resolve(browser.storage.local.set(updates));
     };
-    getAllScripts(tx, items => {
+    getAllScripts(tx, (items) => {
       const uriMap = {};
       items.forEach(({ script, code }) => {
         updates[`scr:${script.props.id}`] = script;
         updates[`code:${script.props.id}`] = code;
         uriMap[script.props.uri] = script.props.id;
       });
-      getAllValues(tx, data => {
+      getAllValues(tx, (data) => {
         data.forEach(({ id, values }) => {
           updates[`val:${id}`] = values;
         });
         onCallback();
       }, uriMap);
     });
-    getAllCache(tx, cache => {
+    getAllCache(tx, (cache) => {
       cache.forEach(({ uri, data }) => {
         updates[`cac:${uri}`] = data;
       });
       onCallback();
     });
-    getAllRequire(tx, data => {
+    getAllRequire(tx, (data) => {
       data.forEach(({ uri, data: code }) => {
         updates[`req:${uri}`] = code;
       });
@@ -79,12 +79,12 @@ export default () => new Promise((resolve, reject) => {
     });
   }
   function getAllScripts(tx, callback) {
-    tx.executeSql('SELECT * FROM scripts', [], handleResult(items => {
+    tx.executeSql('SELECT * FROM scripts', [], handleResult((items) => {
       callback(items.map(transformScript));
     }), dbError);
   }
   function getAllValues(tx, callback, uriMap) {
-    tx.executeSql('SELECT uri,data FROM "values"', [], handleResult(items => {
+    tx.executeSql('SELECT uri,data FROM "values"', [], handleResult((items) => {
       const values = items.map(({ uri, data }) => {
         const id = uriMap[uri];
         if (id) return { id, values: JSON.parse(data) };
@@ -95,12 +95,12 @@ export default () => new Promise((resolve, reject) => {
     }), dbError);
   }
   function getAllCache(tx, callback) {
-    tx.executeSql('SELECT uri,data FROM cache', [], handleResult(items => {
+    tx.executeSql('SELECT uri,data FROM cache', [], handleResult((items) => {
       callback(items);
     }), dbError);
   }
   function getAllRequire(tx, callback) {
-    tx.executeSql('SELECT uri,data FROM require', [], handleResult(items => {
+    tx.executeSql('SELECT uri,data FROM require', [], handleResult((items) => {
       callback(items);
     }), dbError);
   }
